@@ -17,14 +17,10 @@ import android.widget.Toast;
 import java.sql.Array;
 import java.util.ArrayList;
 
+import br.com.senai.projeto01.database.ProdutoDAO;
 import br.com.senai.projeto01.modelo.Produto;
 
 public class MainActivity extends AppCompatActivity {
-
-    private final int REQUEST_CODE_NOVO_PRODUTO = 1;
-    private final int RESULT_CODE_NOVO_PRODUTO = 10;
-    private final int REQUEST_CODE_EDITAR_PRODUTO = 2;
-    private final int RESULT_CODE_PRODUTO_EDITADO = 11;
 
     private ListView listViewProdutos;
     private ArrayAdapter<Produto> adapterProdutos;
@@ -36,19 +32,19 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         setTitle("Produtos");
-
         listViewProdutos = findViewById(R.id.listView_produtos);
-        ArrayList<Produto> produtos = new ArrayList<Produto>();
-
-        adapterProdutos = new ArrayAdapter<Produto>(MainActivity.this, android.R.layout.simple_list_item_1, produtos);
-        listViewProdutos.setAdapter(adapterProdutos);
-
-
         definirOnClickListenerListView();
         definirOnLongClickListener();
+
     }
 
-
+    @Override
+    protected void onResume() {
+        super.onResume();
+        ProdutoDAO produtoDAO = new ProdutoDAO(getBaseContext());
+        adapterProdutos = new ArrayAdapter<Produto>(MainActivity.this, android.R.layout.simple_list_item_1, produtoDAO.listar());
+        listViewProdutos.setAdapter(adapterProdutos);
+    }
 
     private void definirOnClickListenerListView() {
         listViewProdutos.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -57,7 +53,7 @@ public class MainActivity extends AppCompatActivity {
                 Produto produtoClicado = adapterProdutos.getItem(position);
                 Intent intent = new Intent(MainActivity.this, CadastroProdutoActivity.class);
                 intent.putExtra("produtoEdicao", produtoClicado);
-                startActivityForResult(intent, REQUEST_CODE_EDITAR_PRODUTO);
+                startActivity(intent);
             }
         });
     }
@@ -66,21 +62,16 @@ public class MainActivity extends AppCompatActivity {
         listViewProdutos.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener(){
             @Override
             public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
-                final Produto produtoClicado = adapterProdutos.getItem(position);
 
-                new AlertDialog.Builder(MainActivity.this)
-                        .setIcon(android.R.drawable.ic_delete)
-                        .setTitle("Deseja Deletar?")
-                        .setMessage("Deseja deletar o Item?")
-                        .setPositiveButton("sim", new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                adapterProdutos.remove(produtoClicado);
-                                adapterProdutos.notifyDataSetChanged();
-                                Toast.makeText(MainActivity.this, "Produto deletado", Toast.LENGTH_SHORT).show();
-                            }
-                        })
-                        .setNegativeButton("Não", null).show();
+                Produto produtoClicadoLongo = adapterProdutos.getItem(position);
+                ProdutoDAO produtoDAO = new ProdutoDAO(getBaseContext());
+
+                if(produtoDAO.excluir(produtoClicadoLongo)) {
+                    Toast.makeText(getApplicationContext(), "Produto excluido!", Toast.LENGTH_LONG).show();
+                    onResume();
+                }else {
+                    Toast.makeText(getApplicationContext(), "Erro ao excluir!", Toast.LENGTH_LONG).show();
+                }
                 return true;
             }
         });
@@ -88,26 +79,6 @@ public class MainActivity extends AppCompatActivity {
 
     public  void onClickNovoProduto(View v){
         Intent intent = new Intent(MainActivity.this, CadastroProdutoActivity.class);
-        startActivityForResult(intent, REQUEST_CODE_NOVO_PRODUTO);
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        if (requestCode == REQUEST_CODE_NOVO_PRODUTO && resultCode == RESULT_CODE_NOVO_PRODUTO) {
-            Produto produto = (Produto) data.getExtras().getSerializable("novoProduto");
-            produto.setId(++id);
-            this.adapterProdutos.add(produto);
-        }else if(requestCode == REQUEST_CODE_EDITAR_PRODUTO && resultCode == RESULT_CODE_PRODUTO_EDITADO){
-            Produto produtoEditado = (Produto) data.getExtras().getSerializable("produtoEditado");
-            for (int i = 0; i < adapterProdutos.getCount(); i++){
-                Produto produto = adapterProdutos.getItem(i);
-                if (produto.getId() == produtoEditado.getId()){
-                    adapterProdutos.remove(produto);
-                    adapterProdutos.insert(produtoEditado, i);
-                    break;
-                }
-            }
-        }
-        super.onActivityResult(requestCode, resultCode, data);
+        startActivity(intent);
     }
 }
